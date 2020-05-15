@@ -1,3 +1,4 @@
+import sys
 from six import string_types, iteritems
 from functools import reduce
 import logging
@@ -25,7 +26,6 @@ logger = logging.getLogger(__name__)
 
 # Python 3 fixes.
 # TODO: Remove
-import sys
 if sys.version > '3':
     long = int
     basestring = (str, bytes)
@@ -57,7 +57,7 @@ def _to_python(value, instance=None, address_model=None, component_model=None):
     kind_table = {}
     for comp in components:
         kinds = [KEY_KIND_TABLE[k] for k in comp.get('types', [])]
-        kind = reduce(lambda x,y: x|y, kinds, 0)
+        kind = reduce(lambda x, y: x | y, kinds, 0)
         short_name = comp.get('short_name', '')
         long_name = comp.get('long_name', '')
         if not short_name and not long_name:
@@ -65,7 +65,8 @@ def _to_python(value, instance=None, address_model=None, component_model=None):
 
         # Don't create the component here. We need the hierarchy to identify
         # pre-existing components.
-        obj = component_model(kind=kind, short_name=short_name, long_name=long_name)
+        obj = component_model(
+            kind=kind, short_name=short_name, long_name=long_name)
         objs.append((obj, kinds))
         kind_table.update(dict([(k, obj) for k in kinds]))
 
@@ -85,7 +86,8 @@ def _to_python(value, instance=None, address_model=None, component_model=None):
         orig_kinds = set(kinds + [KIND_COUNTRY])
         parent = None
         while not parent and kinds:
-            kinds = set(sum([hierarchy.get(k, []) for k in kinds], [])) - orig_kinds
+            kinds = set(sum([hierarchy.get(k, [])
+                             for k in kinds], [])) - orig_kinds
             for kind in kinds:
                 if kind in kind_table:
                     parent = kind_table[kind]
@@ -106,6 +108,7 @@ def _to_python(value, instance=None, address_model=None, component_model=None):
 
     # Save the objects top-down. Calculate the height while we're here.
     height = 0
+
     def _save(obj, h):
         if obj.parent:
             obj.parent, h = _save(obj.parent, h + 1)
@@ -218,7 +221,8 @@ def lookup(address, instance=None, address_model=None, component_model=None, geo
     if address_model is None:
         address_model = Address
     if geolocator is None:
-        geolocator = GoogleV3(api_key=getattr(settings, 'GOOGLE_API_KEY', None), timeout=10)
+        geolocator = GoogleV3(api_key=getattr(
+            settings, 'GOOGLE_API_KEY', None), timeout=10)
     location = geolocator.geocode(address)
     if not location:
         if instance is not None:
@@ -239,9 +243,10 @@ def lookup(address, instance=None, address_model=None, component_model=None, geo
 class Component(models.Model):
     """An address component."""
 
-    parent     = models.ForeignKey('address.Component', related_name='children', blank=True, null=True)
-    kind       = models.BigIntegerField()
-    long_name  = models.CharField(max_length=256, blank=True)
+    parent = models.ForeignKey('address.Component', related_name='children',
+                               blank=True, null=True, on_delete=models.CASCADE)
+    kind = models.BigIntegerField()
+    long_name = models.CharField(max_length=256, blank=True)
     short_name = models.CharField(max_length=256, blank=True)
 
     class Meta:
@@ -260,7 +265,7 @@ class Component(models.Model):
             return inst.filter(kind__gte=kind)
         else:
             mask = kind << 1
-            return inst.annotate(remainder=F('kind')%mask).filter(remainder__gte=kind)
+            return inst.annotate(remainder=F('kind') % mask).filter(remainder__gte=kind)
 
     def get_geocode_entry(self):
         return {
@@ -288,12 +293,12 @@ class Component(models.Model):
 class Address(models.Model):
     """A model class for an address."""
 
-    raw        = models.CharField(max_length=256, default='', blank=True)
-    formatted  = models.CharField(max_length=256, default='', blank=True)
+    raw = models.CharField(max_length=256, default='', blank=True)
+    formatted = models.CharField(max_length=256, default='', blank=True)
     components = models.ManyToManyField(Component, blank=True)
-    height     = models.PositiveIntegerField(default=0)
-    latitude   = models.FloatField(blank=True, null=True)
-    longitude  = models.FloatField(blank=True, null=True)
+    height = models.PositiveIntegerField(default=0)
+    latitude = models.FloatField(blank=True, null=True)
+    longitude = models.FloatField(blank=True, null=True)
     consistent = models.BooleanField(default=False)
 
     class Meta:
@@ -304,7 +309,8 @@ class Address(models.Model):
 
     def clean(self):
         if not self.raw and not self.formatted:
-            raise ValidationError('Addresses must have at least a raw or formatted value.')
+            raise ValidationError(
+                'Addresses must have at least a raw or formatted value.')
 
     def filter_kind(self, kind):
         res = []
@@ -380,7 +386,8 @@ class AddressField(models.ForeignKey):
         super(AddressField, self).__init__(**kwargs)
 
     def contribute_to_class(self, cls, name, virtual_only=False):
-        super(ForeignObject, self).contribute_to_class(cls, name, virtual_only=virtual_only)
+        super(ForeignObject, self).contribute_to_class(
+            cls, name)
         setattr(cls, self.name, AddressDescriptor(self))
 
     # def deconstruct(self):
