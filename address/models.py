@@ -161,7 +161,7 @@ def _to_python(value, instance=None, address_model=None, component_model=None):
                             )))
             obj, created = address_model.objects.filter(raw=raw)[0], False
         if created:
-            obj.components = roots
+            obj.components.set(roots)
             obj.save()
 
     return obj
